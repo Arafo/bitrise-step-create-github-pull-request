@@ -1,0 +1,99 @@
+#
+# A couple of useful guides & docs:
+#
+# - Main Bitrise CLI docs: https://github.com/bitrise-io/bitrise/tree/master/_docs
+# - Step Development Guideline: https://github.com/bitrise-io/bitrise/blob/master/_docs/step-development-guideline.md
+# - Bitrise.yml format spec: https://github.com/bitrise-io/bitrise/blob/master/_docs/bitrise-yml-format-spec.md
+# - Bitrise docs: http://devcenter.bitrise.io/
+# - Bitrise CLI guides: http://devcenter.bitrise.io/bitrise-cli/
+
+title: |-
+  create-github-pull-request
+summary: |
+  Create a GitHub Pull Request
+description: |
+  You can create a new Pull Request on GitHub.
+website: https://github.com/arafo/bitrise-step-create-github-pull-request
+source_code_url: https://github.com/arafo/bitrise-step-create-github-pull-request
+support_url: https://github.com/arafo/bitrise-step-create-github-pull-request/issues
+host_os_tags:
+  - osx-10.10
+  - ubuntu-16.04
+
+type_tags:
+  - notification
+
+is_requires_admin_user: true
+is_always_run: true
+is_skippable: false
+run_if: ""
+
+toolkit:
+  go:
+    package_name: github.com/arafo/bitrise-step-create-github-pull-request
+
+inputs:
+  - personal_access_token:
+    opts:
+      title: "GitHub personal access token"
+      description: |
+        To setup a **GitHub personal access token** visit: https://github.com/settings/tokens
+        Add repo(Full control of private repositories) scope to the generated token, to allow to comment on GitHub Pull Request or Issue.
+      is_required: true
+      is_sensitive: true
+  - repository_url: "$GIT_REPOSITORY_URL"
+    opts:
+      title: "Repository URL"
+      description: |
+        The URL for target GitHub Repository.
+      is_required: true
+  - base_branch: "main"
+    opts:
+      title: "Base branch"
+      description: |
+        The name of branch to create the PR from
+      is_required: true
+  - commit_branch:
+    opts:
+      title: "Commit branch"
+      description: |
+        The name of branch to create the PR. If it does not already exists, it will be created using the `base_branch`
+      is_required: false
+  - source_files:
+    opts:
+      title: "Source files"
+      description: |
+        The list of files to commit and their location separated by lines
+  - pull_request_title:
+    opts:
+      title: "Pull Request Title"
+      description: |
+        The title of the PR.
+      is_required: true
+  - pull_request_description: ""
+    opts:
+      title: "Pull Request Description"
+      description: |
+        The description of the PR.
+      is_required: false
+  - api_base_url: "https://api.github.com"
+    opts:
+      title: "GitHub API Base URL"
+      description: |-
+        The URL for GitHub or GitHub Enterprise API
+      is_required: true
+  - debug: false
+    opts:
+      title: "Debug mode"
+      description: |-
+        Debug mode
+      is_required: false
+outputs:
+  - EXAMPLE_STEP_OUTPUT:
+    opts:
+      title: "Example Step Output"
+      summary: Summary. No more than 2-3 sentences.
+      description: |
+        Description of this output.
+
+        Can be Markdown formatted text.
