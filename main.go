@@ -1,25 +1,29 @@
 package main
 
 import (
+	"fmt"
+	"math/rand"
 	"os"
 	"strings"
-	"encoding/json"
+	"time"
 
+	"github.com/Arafo/bitrise-step-create-github-pull-request/github"
 	"github.com/bitrise-io/go-utils/log"
 	"github.com/bitrise-tools/go-steputils/stepconf"
-	"github.com/Arafo/bitrise-step-create-github-pull-request/github"
 )
 
 type Config struct {
-	AuthToken        		stepconf.Secret 	`env:"personal_access_token,required"`
-	RepositoryURL    		string          	`env:"repository_url,required"`
-	BaseBranch		 		string			 	`env:"base_branch,required"`	
-	CommitBranch	 		string			 	`env:"commit_branch"`
-	SourceFiles	 	 		string			 	`env:"source_files,required"`
-	PullRequestTitle 		string			 	`env:"pull_request_title,required"`
-	PullRequestDescription	string  		 	`env:"pull_request_description"`
-	APIBaseURL       		string         	 	`env:"api_base_url,required"`
-	Debug		       		bool         	 	`env:"debug"`
+	AuthToken              stepconf.Secret `env:"personal_access_token,required"`
+	RepositoryURL          string          `env:"repository_url,required"`
+	TargetBranch           string          `env:"target_branch,required"`
+	NewBranch              string          `env:"commit_branch"`
+	SourceFiles            string          `env:"source_files,required"`
+	PullRequestTitle       string          `env:"pull_request_title,required"`
+	PullRequestDescription string          `env:"pull_request_description"`
+	BotName                string          `env:"bot_name,required"`
+	BotEmail               string          `env:"bot_email,required"`
+	CommitMessage          string          `env:"commit_message,required"`
+	APIBaseURL             string          `env:"api_base_url,required"`
 }
 
 func ownerAndRepo(url string) (string, string) {
@@ -28,25 +32,46 @@ func ownerAndRepo(url string) (string, string) {
 	return paths[1], strings.TrimSuffix(paths[2], ".git")
 }
 
-func prettyPrint(i interface{}) string {
-    s, _ := json.MarshalIndent(i, "", "\t")
-    return string(s)
+// func prettyPrint(i interface{}) string {
+// 	s, _ := json.MarshalIndent(i, "", "\t")
+// 	return string(s)
+// }
+
+func randomString(length int) string {
+	rand.Seed(time.Now().UnixNano())
+	b := make([]byte, length)
+	rand.Read(b)
+	return fmt.Sprintf("%x", b)[:length]
+}
+
+func newBranchName() string {
+	return fmt.Sprintf("new-tokens-%s", randomString(6))
 }
 
 func main() {
-	var conf Config
-	if err := stepconf.Parse(&conf); err != nil {
-		log.Errorf("Error: %s\n", err)
-		os.Exit(1)
-	}
-	stepconf.Print(conf)
 
-	owner, repo := ownerAndRepo(conf.RepositoryURL)
-	baseBranch := conf.BaseBranch
-	commitBranch := conf.CommitBranch
-	sourceFiles := conf.SourceFiles
-	pullRequestTitle := conf.PullRequestTitle
-	pullRequestDescription := conf.PullRequestDescription
+	var conf = Config{
+		AuthToken:              "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",
+		RepositoryURL:          "https://github.com/adimobile/ios-native-adidas-design-language",
+		NewBranch:              newBranchName(),
+		TargetBranch:           "main",
+		SourceFiles:            "step.yml",
+		PullRequestTitle:       "[Automatic] Generated new token JSON files",
+		PullRequestDescription: "This is an automatic PR generated when tokens have changed in .com repository. Accept & Merge this PR to use the latest values.",
+		APIBaseURL:             "https://api.github.com/",
+		BotName:                "svc-selfsigning",
+		BotEmail:               "bot@mail.com",
+		CommitMessage:          "new token resources files",
+	}
+
+	// if err := stepconf.Parse(&conf); err != nil {
+	// 	log.Errorf("Error: %s\n", err)
+	// 	os.Exit(1)
+	// }
+
+	print("Using ")
+	stepconf.Print(conf)
+	println("")
 
 	var githubClient *github.GithubClient
 
@@ -56,31 +81,25 @@ func main() {
 		githubClient = github.NewEnterpriseClient(conf.APIBaseURL, string(conf.AuthToken))
 	}
 
-	ref, err := githubClient.GetCommitBranchReference(owner, repo, baseBranch, commitBranch)
+	fmt.Println("Cleaning up existing Pull Requests:")
+	fmt.Println("----------------------------------")
+	openedPrIds, err := FetchAllOpenPrIds(*githubClient, conf)
 	if err != nil {
-		log.Errorf("Unable to get/create the commit reference: %s\n", err)
+		log.Errorf("Failed to fetch all opened PRs error: %s\n", err)
+		os.Exit(1)
 	}
+	CloseOpenedPrs(*githubClient, conf, openedPrIds)
 
-	tree, err := githubClient.GenerateTree(owner, repo, sourceFiles, ref)
+	fmt.Println("")
+
+	fmt.Println("Creating new Pull Request:")
+	fmt.Println("--------------------------")
+	err = CreateNewPr(*githubClient, conf)
 	if err != nil {
-		log.Errorf("Unable to create the tree based on the provided files: %s\n", err)
-	}
-
-	commit, err := githubClient.PushCommit(owner, repo, "authorName", "authorEmail", "commitMessage", ref, tree)
-	if err != nil {
-		log.Errorf("Unable to create the commit: %s\n", err)
-	}
-
-
-	pullRequest, err := githubClient.CreatePullRequest(owner, repo, pullRequestTitle, commitBranch, baseBranch, pullRequestDescription)
-	if err != nil {
-		log.Errorf("Github API call failed when creating a Pull Request: %w\n", err)
+		log.Errorf("Failed to create new pull request: %s\n", err)
 		os.Exit(1)
 	}
 
-	if conf.Debug {
-		log.Successf("- Commit:\n%v\n- Pull Request:\n%v\n", prettyPrint(commit), prettyPrint(pullRequest))
-	}
-
 	os.Exit(0)
+
 }
