@@ -34,7 +34,11 @@ workflows:
         - base_branch: "$TEST_BASE_BRANCH"
         - commit_branch: "$TEST_COMMIT_BRANCH"
         - pull_request_title: "$TEST_PULL_REQUEST_TITLE"
+        - pull_request_description: "This is an automatic PR generated when tokens have changed in .com repository. Accept & Merge this PR to use the latest values."
         - source_files: "$TEST_SOURCE_FILES"
+        - bot_name: svc-selfsigning
+        - bot_email: svc_selfsigning@adidas-group.com
+        - commit_message: new token resources files
 
   # ----------------------------------------------------------------
   # --- workflows to Share this step into a Step Library

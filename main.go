@@ -70,6 +70,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	conf.NewBranch = newBranchName()
+
 	print("Using ")
 	stepconf.Print(conf)
 	println("")
