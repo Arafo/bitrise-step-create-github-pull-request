@@ -50,24 +50,25 @@ func newBranchName() string {
 
 func main() {
 
-	var conf = Config{
-		AuthToken:              "",
-		RepositoryURL:          "https://github.com/adimobile/ios-native-adidas-design-language",
-		NewBranch:              newBranchName(),
-		TargetBranch:           "main",
-		SourceFiles:            "step.yml",
-		PullRequestTitle:       "[Automatic] Generated new token JSON files",
-		PullRequestDescription: "This is an automatic PR generated when tokens have changed in .com repository. Accept & Merge this PR to use the latest values.",
-		APIBaseURL:             "https://api.github.com/",
-		BotName:                "svc-selfsigning",
-		BotEmail:               "bot@mail.com",
-		CommitMessage:          "new token resources files",
-	}
-
-	// if err := stepconf.Parse(&conf); err != nil {
-	// 	log.Errorf("Error: %s\n", err)
-	// 	os.Exit(1)
+	// var conf = Config{
+	// 	AuthToken:              "",
+	// 	RepositoryURL:          "https://github.com/adimobile/ios-native-adidas-design-language",
+	// 	NewBranch:              newBranchName(),
+	// 	TargetBranch:           "main",
+	// 	SourceFiles:            "step.yml",
+	// 	PullRequestTitle:       "[Automatic] Generated new token JSON files",
+	// 	PullRequestDescription: "This is an automatic PR generated when tokens have changed in .com repository. Accept & Merge this PR to use the latest values.",
+	// 	APIBaseURL:             "https://api.github.com/",
+	// 	BotName:                "svc-selfsigning",
+	// 	BotEmail:               "bot@mail.com",
+	// 	CommitMessage:          "new token resources files",
 	// }
+
+	var conf Config
+	if err := stepconf.Parse(&conf); err != nil {
+		log.Errorf("Error: %s\n", err)
+		os.Exit(1)
+	}
 
 	print("Using ")
 	stepconf.Print(conf)
