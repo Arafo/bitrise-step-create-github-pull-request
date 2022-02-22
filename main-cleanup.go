@@ -72,7 +72,6 @@ func closePr(githubClient github.GithubClient, owner string, repo string, id int
 	var edit = gogithub.PullRequest{
 		State: &targetState,
 	}
-
 	_, _, err := githubClient.PullRequests.Edit(githubClient.Context, owner, repo, id, &edit)
 
 	return err

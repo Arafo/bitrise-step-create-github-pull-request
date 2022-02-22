@@ -47,18 +47,12 @@ inputs:
       description: |
         The URL for target GitHub Repository.
       is_required: true
-  - base_branch: "main"
+  - target_branch: "main"
     opts:
-      title: "Base branch"
+      title: "Target branch"
       description: |
-        The name of branch to create the PR from
+        The name of branch to create the PR to
       is_required: true
-  - commit_branch:
-    opts:
-      title: "Commit branch"
-      description: |
-        The name of branch to create the PR. If it does not already exists, it will be created using the `base_branch`
-      is_required: false
   - source_files:
     opts:
       title: "Source files"
@@ -82,12 +76,6 @@ inputs:
       description: |-
         The URL for GitHub or GitHub Enterprise API
       is_required: true
-  - debug: false
-    opts:
-      title: "Debug mode"
-      description: |-
-        Debug mode
-      is_required: false
 outputs:
   - EXAMPLE_STEP_OUTPUT:
     opts:

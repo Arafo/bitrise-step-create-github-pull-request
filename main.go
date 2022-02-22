@@ -51,7 +51,7 @@ func newBranchName() string {
 func main() {
 
 	var conf = Config{
-		AuthToken:              "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",
+		AuthToken:              "",
 		RepositoryURL:          "https://github.com/adimobile/ios-native-adidas-design-language",
 		NewBranch:              newBranchName(),
 		TargetBranch:           "main",
