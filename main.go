@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Arafo/bitrise-step-create-github-pull-request/github"
+	githubrepos "github.com/Arafo/bitrise-step-create-github-pull-request/githubrepo"
 	"github.com/bitrise-io/go-utils/log"
 	"github.com/bitrise-tools/go-steputils/stepconf"
 )
@@ -45,7 +46,7 @@ func randomString(length int) string {
 }
 
 func newBranchName() string {
-	return fmt.Sprintf("new-tokens-%s", randomString(6))
+	return fmt.Sprintf("bot-tokens-%s", randomString(4))
 }
 
 func main() {
@@ -71,38 +72,131 @@ func main() {
 	}
 
 	conf.NewBranch = newBranchName()
+	owner, repo := ownerAndRepo(conf.RepositoryURL)
 
 	print("Using ")
 	stepconf.Print(conf)
 	println("")
 
-	var githubClient *github.GithubClient
+	githubClient := getClient(conf)
+	pullRequestClient := githubrepos.NewGithubRepository(*githubClient, repo, owner)
 
-	if conf.APIBaseURL == "" {
-		githubClient = github.NewClient(string(conf.AuthToken))
-	} else {
-		githubClient = github.NewEnterpriseClient(conf.APIBaseURL, string(conf.AuthToken))
-	}
+	err := cleanup(pullRequestClient, conf)
 
-	fmt.Println("Cleaning up existing Pull Requests:")
-	fmt.Println("----------------------------------")
-	openedPrIds, err := FetchAllOpenPrIds(*githubClient, conf)
 	if err != nil {
-		log.Errorf("Failed to fetch all opened PRs error: %s\n", err)
+		log.Errorf("Failed to do housekeeping: %s\n", err)
 		os.Exit(1)
 	}
-	CloseOpenedPrs(*githubClient, conf, openedPrIds)
 
-	fmt.Println("")
+	err = createNewPr(pullRequestClient, conf)
 
-	fmt.Println("Creating new Pull Request:")
-	fmt.Println("--------------------------")
-	err = CreateNewPr(*githubClient, conf)
 	if err != nil {
-		log.Errorf("Failed to create new pull request: %s\n", err)
+		log.Errorf("Failed to create pull request: %s\n", err)
 		os.Exit(1)
 	}
 
 	os.Exit(0)
+
+}
+
+func getClient(conf Config) *github.GithubClient {
+	if conf.APIBaseURL == "" {
+		return github.NewClient(string(conf.AuthToken))
+	} else {
+		return github.NewEnterpriseClient(conf.APIBaseURL, string(conf.AuthToken))
+	}
+}
+
+// Cleanup will fetch all opened PRs to our target branch from our BOT and close them
+func cleanup(repo *githubrepos.GithubRepository, config Config) error {
+
+	fmt.Println("Cleaning up existing PRs:")
+	fmt.Println("-------------------------")
+
+	prs, err := repo.FetchPullRequests(config.NewBranch, config.TargetBranch)
+
+	if err != nil {
+		log.Errorf("Failed to fetch existing PRs: %s\n", err)
+		return err
+	}
+
+	fmt.Println("Found", len(prs), "opened PR(s)")
+
+	prsIdsWeAreIntrestedIn := []int{}
+	for i := range prs {
+		pr := prs[i]
+		// if *pr.GetUser().Login == config.BotName {
+		prsIdsWeAreIntrestedIn = append(prsIdsWeAreIntrestedIn, *pr.Number)
+		// }
+	}
+
+	fmt.Println("Of which", len(prsIdsWeAreIntrestedIn), "need to be closed")
+	fmt.Println("Closing PRs with Ids:", prsIdsWeAreIntrestedIn)
+
+	for i := range prsIdsWeAreIntrestedIn {
+		prId := prsIdsWeAreIntrestedIn[i]
+		fmt.Print("Closing: ", prId, "...")
+		err := repo.ClosePullRequest(prId)
+		if err != nil {
+			fmt.Print("Failed!\n")
+			log.Errorf("Failed because of: %s\n", err)
+		} else {
+			fmt.Print("Ok!\n")
+		}
+	}
+
+	fmt.Println("Done with cleanup")
+	fmt.Println("")
+
+	return nil
+
+}
+
+func createNewPr(repo *githubrepos.GithubRepository, config Config) error {
+
+	fmt.Println("Creating new PR:")
+	fmt.Println("----------------")
+
+	targetBranch := config.TargetBranch
+	newBranch := config.NewBranch
+	sourceFiles := config.SourceFiles
+	pullRequestTitle := config.PullRequestTitle
+	pullRequestDescription := config.PullRequestDescription
+
+	fmt.Printf("Getting last commit on target (%s)\n", targetBranch)
+
+	sha, err := repo.GetLastCommit(config.TargetBranch)
+	if err != nil {
+		log.Errorf("Unable to get last commit SHA: %s\n", err)
+		return err
+	}
+	fmt.Println("Got last commit", sha)
+
+	fmt.Printf("Creating new branch (%s) from base (%s) at SHA (%s)\n", newBranch, targetBranch, sha)
+	err = repo.CreateBranch(newBranch, targetBranch, sha)
+	if err != nil {
+		log.Errorf("Unable to create new branch: %s\n", err)
+		return err
+	}
+
+	fmt.Println("New branch created", newBranch)
+
+	fmt.Println("Commiting changs to branch...")
+	err = repo.CreateCommit(targetBranch, newBranch, sourceFiles, config.BotName, config.BotEmail, config.CommitMessage)
+	if err != nil {
+		log.Errorf("Unable to create new branch: %s\n", err)
+		return err
+	}
+
+	fmt.Println("Creating pull request...")
+	number, err := repo.CreatePullRequest(pullRequestTitle, pullRequestDescription, newBranch, targetBranch)
+	if err != nil {
+		log.Errorf("Github API call failed when creating a Pull Request: %w\n", err)
+		return err
+	} else {
+		fmt.Println("New pull request created id:", number)
+	}
+
+	return nil
 
 }
