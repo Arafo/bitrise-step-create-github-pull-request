@@ -18,9 +18,9 @@ func (c *GithubClient) GetRefToHead(owner string, repo string, branch string) (r
 }
 
 // Creates a new reference
-func (c *GithubClient) CreateNewRef(owner string, repo string, refName string, atBranch string, atSha string) (ref *gogithub.Reference, err error) {
+func (c *GithubClient) CreateNewRef(owner string, repo string, branchName string, atBranch string, atSha string) (ref *gogithub.Reference, err error) {
 
-	newRefName := fmt.Sprintf("refs/heads/%s", refName)
+	newRefName := fmt.Sprintf("refs/heads/%s", branchName)
 
 	reference := gogithub.Reference{
 		Ref: &newRefName,
@@ -32,5 +32,16 @@ func (c *GithubClient) CreateNewRef(owner string, repo string, refName string, a
 	ref, _, err = c.Client.Git.CreateRef(c.Context, owner, repo, &reference)
 
 	return ref, err
+
+}
+
+// Remove existing reference
+func (c *GithubClient) RemoveRef(owner string, repo string, branchName string) error {
+
+	refName := fmt.Sprintf("refs/heads/%s", branchName)
+
+	_, err := c.Client.Git.DeleteRef(c.Context, owner, repo, refName)
+
+	return err
 
 }

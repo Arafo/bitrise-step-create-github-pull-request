@@ -11,6 +11,7 @@ import (
 	githubrepos "github.com/Arafo/bitrise-step-create-github-pull-request/githubrepo"
 	"github.com/bitrise-io/go-utils/log"
 	"github.com/bitrise-tools/go-steputils/stepconf"
+	gogithub "github.com/google/go-github/v42/github"
 )
 
 type Config struct {
@@ -88,12 +89,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = createNewPr(pullRequestClient, conf)
+	// err = createNewPr(pullRequestClient, conf)
 
-	if err != nil {
-		log.Errorf("Failed to create pull request: %s\n", err)
-		os.Exit(1)
-	}
+	// if err != nil {
+	// 	log.Errorf("Failed to create pull request: %s\n", err)
+	// 	os.Exit(1)
+	// }
 
 	os.Exit(0)
 
@@ -120,28 +121,42 @@ func cleanup(repo *githubrepos.GithubRepository, config Config) error {
 		return err
 	}
 
-	fmt.Println("Found", len(prs), "opened PR(s)")
+	fmt.Print("Found", len(prs), "opened PR(s)")
 
-	prsIdsWeAreIntrestedIn := []int{}
+	prsWeAreIntrestedIn := []gogithub.PullRequest{}
 	for i := range prs {
 		pr := prs[i]
-		// if *pr.GetUser().Login == config.BotName {
-		prsIdsWeAreIntrestedIn = append(prsIdsWeAreIntrestedIn, *pr.Number)
-		// }
+		if *pr.GetUser().Login == config.BotName {
+			prsWeAreIntrestedIn = append(prsWeAreIntrestedIn, *pr)
+		}
 	}
 
-	fmt.Println("Of which", len(prsIdsWeAreIntrestedIn), "need to be closed")
-	fmt.Println("Closing PRs with Ids:", prsIdsWeAreIntrestedIn)
+	fmt.Println(" of which", len(prsWeAreIntrestedIn), "need to be closed\n")
 
-	for i := range prsIdsWeAreIntrestedIn {
-		prId := prsIdsWeAreIntrestedIn[i]
-		fmt.Print("Closing: ", prId, "...")
+	for i := range prsWeAreIntrestedIn {
+		pr := prsWeAreIntrestedIn[i]
+		prId := pr.GetNumber()
+		prRef := pr.GetHead().GetRef()
+		fmt.Printf("Cleaning up pull request (%s) with id (%d):\n", prRef, prId)
+		if prRef == config.TargetBranch { // this will fail anyway down the line
+			fmt.Println("Fatal! - cannot delete target branch! - something is wrong with the script")
+			continue
+		}
+		fmt.Printf("   -> Closing PR with id (%d)...", prId)
 		err := repo.ClosePullRequest(prId)
 		if err != nil {
-			fmt.Print("Failed!\n")
+			fmt.Println("Failed!")
 			log.Errorf("Failed because of: %s\n", err)
 		} else {
-			fmt.Print("Ok!\n")
+			fmt.Println("Closed!")
+		}
+		fmt.Printf("   -> Deleting branch with ref (%s)...", prRef)
+		err = repo.DeleteBranch(prRef)
+		if err != nil {
+			fmt.Println("Failed!")
+			log.Errorf("Failed because of: %s\n", err)
+		} else {
+			fmt.Println("Deleted!")
 		}
 	}
 
