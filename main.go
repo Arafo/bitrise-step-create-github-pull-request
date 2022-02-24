@@ -89,12 +89,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	// err = createNewPr(pullRequestClient, conf)
+	err = createNewPr(pullRequestClient, conf)
 
-	// if err != nil {
-	// 	log.Errorf("Failed to create pull request: %s\n", err)
-	// 	os.Exit(1)
-	// }
+	if err != nil {
+		log.Errorf("Failed to create pull request: %s\n", err)
+		os.Exit(1)
+	}
 
 	os.Exit(0)
 
@@ -121,7 +121,7 @@ func cleanup(repo *githubrepos.GithubRepository, config Config) error {
 		return err
 	}
 
-	fmt.Print("Found", len(prs), "opened PR(s)")
+	fmt.Print("Found ", len(prs), " opened PR(s)")
 
 	prsWeAreIntrestedIn := []gogithub.PullRequest{}
 	for i := range prs {
@@ -131,7 +131,7 @@ func cleanup(repo *githubrepos.GithubRepository, config Config) error {
 		}
 	}
 
-	fmt.Println(" of which", len(prsWeAreIntrestedIn), "need to be closed\n")
+	fmt.Println(" of which ", len(prsWeAreIntrestedIn), " need to be closed")
 
 	for i := range prsWeAreIntrestedIn {
 		pr := prsWeAreIntrestedIn[i]
